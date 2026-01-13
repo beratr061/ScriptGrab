@@ -1,0 +1,13 @@
+# ScriptGrab Whisper Engine Dependencies
+# Core Whisper with word-level timestamps
+whisper-timestamped>=1.15.0
+
+# PyTorch - CPU version (smaller, for most users)
+# For GPU support, install torch with CUDA manually
+torch>=2.0.0
+
+# Audio processing
+ffmpeg-python>=0.2.0
+
+# For building executable
+pyinstaller>=6.0.0

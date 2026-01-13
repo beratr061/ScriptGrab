@@ -1,0 +1,7 @@
+# Seeds for failure cases proptest has generated in the past. It is
+# automatically read and these particular cases re-run before any
+# novel cases are generated.
+#
+# It is recommended to check this file in to source control so that
+# everyone who runs the test benefits from these saved cases.
+cc 6c309243e84fbfa417e934aa8955ca8a70bae5fcd908099ae897c15fa9b7029e # shrinks to transcript = StoredTranscript { id: "0", file_name: "a.mp3", file_path: "/a", created_at: "2026-01-13T01:25:53.104321400+00:00", duration: 0.1, language: "aa", model_size: Base, segments: [Segment { id: "a", start: 0.0, end: 15.120480422373081, text: "n Kj fbWi ZgVLr QOrpUrQUAX  py zqhJ x e IXoXOU VRr  g", words: [] }] }
