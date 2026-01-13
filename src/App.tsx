@@ -16,7 +16,7 @@ import SearchBar from "./components/SearchBar";
 import SettingsPanel from "./components/SettingsPanel";
 import { useAppStore } from "./store/appStore";
 import { createQueueItems, getNextPendingItem } from "./lib/queue";
-import type { StoredTranscript, Transcript } from "./types";
+import type { Transcript } from "./types";
 import "./App.css";
 
 function App() {
@@ -169,29 +169,6 @@ function App() {
       );
     }
   }, [setFile, setCurrentView, setProcessing, setProgress, resetProcessing, settings.modelSize]);
-
-  const handleHistorySelect = useCallback((id: string, storedTranscript: StoredTranscript) => {
-    console.log('History item selected:', id);
-    
-    // Set file info from stored transcript
-    setFile({
-      name: storedTranscript.fileName,
-      path: storedTranscript.filePath,
-      size: 0,
-      duration: storedTranscript.duration,
-    });
-    
-    // Convert StoredTranscript to Transcript format for the viewer
-    const transcript: Transcript = {
-      segments: storedTranscript.segments,
-      language: storedTranscript.language,
-      duration: storedTranscript.duration,
-    };
-    
-    // Set transcript and switch to result view
-    useAppStore.getState().setTranscript(transcript);
-    setCurrentView('result');
-  }, [setFile, setCurrentView]);
 
   const handleSettingsClick = useCallback(() => {
     setShowSettings(true);
@@ -400,7 +377,6 @@ function App() {
       <Layout
         sidebar={
           <Sidebar
-            onHistorySelect={handleHistorySelect}
             onSettingsClick={handleSettingsClick}
             onProcessNext={handleProcessNext}
             isProcessing={isProcessing}

@@ -1,14 +1,13 @@
 /**
  * Sidebar Component
- * Modern navigation sidebar with section dividers
- * Requirements: 6.2 (history list), 7.5 (staggered fade-in animation)
+ * Modern navigation sidebar with queue management
+ * Requirements: 7.5 (staggered fade-in animation)
  */
 
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   Home, 
-  Clock, 
   ListTodo, 
   Settings, 
   ChevronDown,
@@ -17,20 +16,18 @@ import {
   AlertCircle,
   Loader2,
   X,
-  GripVertical
+  GripVertical,
+  Clock
 } from 'lucide-react';
-import { useQueue, useAppActions } from '../store/appStore';
-import type { StoredTranscript, QueueItem } from '../types';
+import { useQueue, useAppActions, useAppStore } from '../store/appStore';
+import type { QueueItem } from '../types';
 import { getQueueStats } from '../lib/queue';
 
 interface SidebarProps {
-  onHistorySelect: (id: string, transcript: StoredTranscript) => void;
   onSettingsClick: () => void;
   onProcessNext?: () => void;
   isProcessing?: boolean;
 }
-
-type ActiveSection = 'home' | 'history' | 'queue';
 
 // Navigation Item Component
 interface NavItemProps {
@@ -152,7 +149,6 @@ const QueueItemRow: React.FC<{
 const ProcessingCard: React.FC<{
   progress: number;
   fileName: string;
-  onCancel?: () => void;
 }> = ({ progress, fileName }) => (
   <div className="mx-2 mb-2 p-3 rounded-xl bg-zinc-800/80 border border-zinc-700">
     <div className="flex items-center gap-2 mb-2">
@@ -175,19 +171,28 @@ const ProcessingCard: React.FC<{
 );
 
 const Sidebar: React.FC<SidebarProps> = ({
-  onHistorySelect,
   onSettingsClick,
   onProcessNext,
   isProcessing = false,
 }) => {
-  const [activeSection, setActiveSection] = useState<ActiveSection>('home');
   const [isQueueExpanded, setIsQueueExpanded] = useState(true);
   
   const queue = useQueue();
   const { removeFromQueue } = useAppActions();
+  const currentView = useAppStore((state) => state.currentView);
+  const setCurrentView = useAppStore((state) => state.setCurrentView);
+  const resetProcessing = useAppStore((state) => state.resetProcessing);
   const stats = getQueueStats(queue);
   
   const processingItem = queue.find(item => item.status === 'processing');
+
+  // Handle home click - go back to idle/dropzone
+  const handleHomeClick = () => {
+    if (currentView !== 'processing') {
+      resetProcessing();
+      setCurrentView('idle');
+    }
+  };
 
   return (
     <div className="flex flex-col h-full bg-zinc-900">
@@ -211,15 +216,8 @@ const Sidebar: React.FC<SidebarProps> = ({
           <NavItem
             icon={<Home size={18} />}
             label="Ana Sayfa"
-            isActive={activeSection === 'home'}
-            onClick={() => setActiveSection('home')}
-          />
-          
-          <NavItem
-            icon={<Clock size={18} />}
-            label="Geçmiş"
-            isActive={activeSection === 'history'}
-            onClick={() => setActiveSection('history')}
+            isActive={currentView === 'idle'}
+            onClick={handleHomeClick}
           />
         </div>
 
@@ -319,8 +317,10 @@ const Sidebar: React.FC<SidebarProps> = ({
       {/* Footer */}
       <div className="p-3 border-t border-zinc-800">
         <div className="flex items-center gap-2 px-2 py-1.5 rounded-lg bg-zinc-800/50">
-          <div className="w-2 h-2 rounded-full bg-green-500" />
-          <span className="text-xs text-zinc-400">Hazır</span>
+          <div className={`w-2 h-2 rounded-full ${isProcessing ? 'bg-yellow-500 animate-pulse' : 'bg-green-500'}`} />
+          <span className="text-xs text-zinc-400">
+            {isProcessing ? 'İşleniyor...' : 'Hazır'}
+          </span>
         </div>
       </div>
     </div>
