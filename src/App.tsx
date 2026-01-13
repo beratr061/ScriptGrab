@@ -140,6 +140,22 @@ function App() {
     // Extract file name from path
     const fileName = filePath.split(/[/\\]/).pop() || filePath;
     
+    // Create queue item for the file
+    const queueItems = createQueueItems([filePath]);
+    addToQueue(queueItems);
+    
+    // If already processing, file is queued - don't start new processing
+    if (isProcessing) {
+      console.log('Already processing, file added to queue:', fileName);
+      toast.success('Kuyruğa Eklendi', `${fileName} işlem sırasına alındı`);
+      return;
+    }
+    
+    const queueItem = queueItems[0];
+    
+    // Update queue item status to processing
+    updateQueueItem(queueItem.id, { status: 'processing', progress: 0 });
+    
     // Set file info and switch to processing view
     setFile({
       name: fileName,
@@ -160,6 +176,7 @@ function App() {
       setCurrentJobId(jobId);
     } catch (error) {
       console.error('Failed to start transcription:', error);
+      updateQueueItem(queueItem.id, { status: 'error' });
       resetProcessing();
       setCurrentView('idle');
       // Show error toast - Requirements: 2.8
@@ -168,7 +185,7 @@ function App() {
         error instanceof Error ? error.message : 'Bilinmeyen bir hata oluştu'
       );
     }
-  }, [setFile, setCurrentView, setProcessing, setProgress, resetProcessing, settings.modelSize]);
+  }, [setFile, setCurrentView, setProcessing, setProgress, resetProcessing, settings.modelSize, isProcessing, addToQueue, updateQueueItem]);
 
   const handleSettingsClick = useCallback(() => {
     setShowSettings(true);
@@ -199,8 +216,48 @@ function App() {
       updateQueueItem(processingItem.id, { status: 'completed', progress: 100 });
     }
     
+    // Check if there are more pending items in queue and auto-process
+    const pendingItems = queue.filter(item => item.status === 'pending');
+    if (pendingItems.length > 0) {
+      // Small delay before starting next item for better UX
+      setTimeout(() => {
+        const nextItem = pendingItems[0];
+        console.log('Auto-processing next queue item:', nextItem.fileName);
+        
+        // Update queue item status to processing
+        updateQueueItem(nextItem.id, { status: 'processing', progress: 0 });
+        
+        // Set file info and switch to processing view
+        setFile({
+          name: nextItem.fileName,
+          path: nextItem.filePath,
+          size: 0,
+          duration: 0,
+        });
+        setCurrentView('processing');
+        setProcessing(true);
+        setProgress(0, 'Transkript başlatılıyor...');
+        
+        invoke<string>('start_transcription', {
+          filePath: nextItem.filePath,
+          modelSize: settings.modelSize,
+        }).then((jobId) => {
+          setCurrentJobId(jobId);
+        }).catch((error) => {
+          console.error('Failed to start transcription:', error);
+          updateQueueItem(nextItem.id, { status: 'error' });
+          resetProcessing();
+          setCurrentView('idle');
+          toast.error(
+            'Kuyruk İşleme Hatası',
+            `${nextItem.fileName} dosyası işlenemedi`
+          );
+        });
+      }, 500);
+    }
+    
     // TODO: Save to history (Task 17)
-  }, [queue, updateQueueItem]);
+  }, [queue, updateQueueItem, setFile, setCurrentView, setProcessing, setProgress, settings.modelSize, resetProcessing]);
 
   // Handle word click in transcript - seek audio to timestamp
   const handleWordClick = useCallback((timestamp: number) => {
@@ -276,12 +333,49 @@ function App() {
     setCurrentTime(time);
   }, []);
 
-  // Handle multiple files drop - add to queue
-  const handleMultipleFilesDrop = useCallback((filePaths: string[]) => {
+  // Handle multiple files drop - add to queue and auto-start if not processing
+  const handleMultipleFilesDrop = useCallback(async (filePaths: string[]) => {
     console.log('Multiple files dropped:', filePaths);
     const queueItems = createQueueItems(filePaths);
     addToQueue(queueItems);
-  }, [addToQueue]);
+    
+    // Auto-start processing if not already processing
+    if (!isProcessing && queueItems.length > 0) {
+      const firstItem = queueItems[0];
+      console.log('Auto-starting processing for:', firstItem.fileName);
+      
+      // Update queue item status to processing
+      updateQueueItem(firstItem.id, { status: 'processing', progress: 0 });
+      
+      // Set file info and switch to processing view
+      setFile({
+        name: firstItem.fileName,
+        path: firstItem.filePath,
+        size: 0,
+        duration: 0,
+      });
+      setCurrentView('processing');
+      setProcessing(true);
+      setProgress(0, 'Transkript başlatılıyor...');
+      
+      try {
+        const jobId = await invoke<string>('start_transcription', {
+          filePath: firstItem.filePath,
+          modelSize: settings.modelSize,
+        });
+        setCurrentJobId(jobId);
+      } catch (error) {
+        console.error('Failed to start transcription:', error);
+        updateQueueItem(firstItem.id, { status: 'error' });
+        resetProcessing();
+        setCurrentView('idle');
+        toast.error(
+          'Transkript Başlatılamadı',
+          error instanceof Error ? error.message : 'Bilinmeyen bir hata oluştu'
+        );
+      }
+    }
+  }, [addToQueue, isProcessing, updateQueueItem, setFile, setCurrentView, setProcessing, setProgress, settings.modelSize, resetProcessing]);
 
   // Handle processing next item in queue
   const handleProcessNext = useCallback(async () => {
