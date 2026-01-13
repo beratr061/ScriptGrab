@@ -15,10 +15,6 @@
   <img src="https://img.shields.io/badge/Whisper-AI-green?style=flat-square" alt="Whisper">
 </p>
 
-<p align="center">
-  <img src="assets/demo.gif" width="800" alt="ScriptGrab Demo">
-</p>
-
 ---
 
 ## ✨ Özellikler
